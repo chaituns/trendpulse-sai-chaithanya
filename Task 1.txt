@@ -1,0 +1,31 @@
+import requests
+import json
+import time
+from datetime import datetime
+
+def fetch_trending_stories(limit=50):
+    # Get top story IDs
+    top_ids_url = "https://hacker-news.firebaseio.com/v0/topstories.json"
+    top_ids = requests.get(top_ids_url).json()
+
+    stories = []
+    # Fetch details for the first 'limit' stories
+    for story_id in top_ids[:limit]:
+        story_url = f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json"
+        story_data = requests.get(story_url).json()
+        if story_data and 'title' in story_data:
+            stories.append({
+                "id": story_data.get("id"),
+                "title": story_data.get("title"),
+                "score": story_data.get("score", 0)
+            })
+          # Mandatory: Wait 2 seconds between each category
+        time.sleep(2)
+
+    # Save as JSON
+    with open('stories.json', 'w') as f:
+        json.dump(stories, f)
+    return stories
+
+trending_stories = fetch_trending_stories()
+print(trending_stories)
