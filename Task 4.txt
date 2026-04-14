@@ -1,0 +1,80 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+
+# --- 1. Setup ---
+# Create folder if it doesn't exist
+if not os.path.exists('outputs'):
+    os.makedirs('outputs')
+
+# Load the CSV
+df = pd.read_csv('data/trends_analysed.csv')
+
+# --- 2. Chart 1: Top 10 Stories by Score ---
+top_10 = df.nlargest(10, 'score')
+
+plt.figure(figsize=(10, 6))
+# Shorten titles longer than 50 characters
+titles = [t[:50] + '...' if len(t) > 50 else t for t in top_10['title']]
+
+plt.barh(titles, top_10['score'], color='skyblue')
+plt.gca().invert_yaxis() # Highest score at top
+plt.title('Top 10 Stories by Score')
+plt.xlabel('Score')
+plt.ylabel('Story Title')
+plt.tight_layout()
+plt.savefig('outputs/chart1_top_stories.png')
+plt.show()
+
+# --- 3. Chart 2: Stories per Category ---
+cat_counts = df['category'].value_counts()
+
+plt.figure(figsize=(8, 5))
+cat_counts.plot(kind='bar', color=['red', 'blue', 'green', 'orange', 'purple'])
+plt.title('Stories per Category')
+plt.xlabel('Category')
+plt.ylabel('Number of Stories')
+plt.tight_layout()
+plt.savefig('outputs/chart2_categories.png')
+plt.show()
+
+# --- 4. Chart 3: Score vs Comments ---
+plt.figure(figsize=(8, 5))
+# Assuming 'is_popular' column exists from Task 3
+popular = df[df['is_popular'] == True]
+non_popular = df[df['is_popular'] == False]
+
+plt.scatter(non_popular['score'], non_popular['num_comments'], color='gray', label='Non-Popular', alpha=0.5)
+plt.scatter(popular['score'], popular['num_comments'], color='gold', label='Popular', alpha=0.8)
+
+plt.title('Score vs Comments')
+plt.xlabel('Score')
+plt.ylabel('Comments')
+plt.legend()
+plt.tight_layout()
+plt.savefig('outputs/chart3_scatter.png')
+plt.show()
+
+# --- Bonus: Dashboard ---
+fig, axs = plt.subplots(2, 2, figsize=(15, 12))
+fig.suptitle('HackerNews Trends Dashboard', fontsize=16)
+
+# Subplot 1: Top 10
+axs[0, 0].barh(titles, top_10['score'], color='skyblue')
+axs[0, 0].invert_yaxis()
+axs[0, 0].set_title('Top 10 Stories')
+
+# Subplot 2: Categories
+cat_counts.plot(kind='bar', ax=axs[0, 1], color=['red', 'blue', 'green'])
+axs[0, 1].set_title('Stories per Category')
+
+# Subplot 3: Scatter
+axs[1, 0].scatter(df['score'], df['num_comments'], c=df['is_popular'].map({True: 'gold', False: 'gray'}))
+axs[1, 0].set_title('Score vs Comments')
+
+# Hide the empty 4th subplot
+axs[1, 1].axis('off')
+
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.savefig('outputs/dashboard.png')
+plt.show()
