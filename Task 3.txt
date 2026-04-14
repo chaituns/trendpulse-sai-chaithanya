@@ -1,0 +1,57 @@
+import pandas as pd
+import numpy as np
+
+# --- Task 1: Load and Explore ---
+# Load data/trends_clean.csv into a Pandas DataFrame
+df = pd.read_csv('data/trends_clean.csv')
+
+# Print the shape of the DataFrame
+print(f"Loaded data: {df.shape}")
+
+# Print the first 5 rows
+print("\nFirst 5 rows:")
+print(df.head())
+
+# Print the average score and average num_comments
+avg_score = df['score'].mean()
+avg_comments = df['num_comments'].mean()
+print(f"\nAverage score : {avg_score:,.0f}")
+print(f"Average comments: {avg_comments:.0f}")
+
+
+# --- Task 2: Basic Analysis with NumPy ---
+print("\n--- NumPy Stats ---")
+scores = df['score'].to_numpy()
+
+# Mean, median, and standard deviation
+print(f"Mean score : {np.mean(scores):,.0f}")
+print(f"Median score : {np.median(scores):,.0f}")
+print(f"Std deviation: {np.std(scores):,.0f}")
+
+# Highest and lowest score
+print(f"Max score : {np.max(scores):,}")
+print(f"Min score : {np.min(scores):,}")
+
+# Category with most stories
+top_category = df['category'].value_counts().idxmax()
+category_count = df['category'].value_counts().max()
+print(f"\nMost stories in: {top_category} ({category_count} stories)")
+
+# Story with the most comments
+most_commented_idx = df['num_comments'].idxmax()
+most_commented_story = df.loc[most_commented_idx]
+print(f"Most commented story: '{most_commented_story['title']}' - {most_commented_story['num_comments']:,} comments")
+
+
+# --- Task 3: Add New Columns ---
+# Formula: num_comments / (score + 1)
+df['engagement'] = df['num_comments'] / (df['score'] + 1)
+
+# True if score > average score, else False
+df['is_popular'] = df['score'] > avg_score
+
+
+# --- Task 4: Save the Result ---
+# Save the updated DataFrame to data/trends_analysed.csv
+df.to_csv('data/trends_analysed.csv', index=False)
+print("\nSaved to data/trends_analysed.csv")
