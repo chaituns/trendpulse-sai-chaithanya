@@ -1,0 +1,83 @@
+import pandas as pd
+import json
+import requests # Needed for making individual API calls
+import os # Needed to ensure output directory exists
+
+# 1. Load the JSON File
+file_path_topstories = 'https://hacker-news.firebaseio.com/v0/topstories.json'
+response = requests.get(file_path_topstories)
+story_ids = response.json()
+
+# Limit to a smaller number of stories for demonstration/performance
+# For instance, the top 100 stories, to avoid making too many API calls
+story_ids_to_fetch = story_ids[:100]
+
+all_stories_data = []
+print(f"Fetching details for {len(story_ids_to_fetch)} stories...")
+for story_id in story_ids_to_fetch:
+    item_url = f'https://hacker-news.firebaseio.com/v0/item/{story_id}.json'
+    try:
+        item_response = requests.get(item_url, timeout=5) # Add a timeout
+        item_response.raise_for_status() # Raise an exception for HTTP errors
+        story_data = item_response.json()
+        if story_data and 'id' in story_data: # Ensure story_data is not None and has an 'id'
+            # Rename 'id' to 'post_id' to match subsequent cleaning steps
+            story_data['post_id'] = story_data.pop('id')
+            all_stories_data.append(story_data)
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching story {story_id}: {e}")
+        continue
+
+df = pd.DataFrame(all_stories_data)
+print(f"Loaded {len(df)} stories from Hacker News API")
+
+# 2. Clean the Data
+# Remove duplicates based on 'post_id'
+# The Hacker News API usually returns unique IDs, but good practice to keep this step
+df = df.drop_duplicates(subset=['post_id'])
+print(f"After removing duplicates: {len(df)}")
+
+# Ensure 'num_comments' column exists (Hacker News API uses 'descendants' for comments count)
+if 'descendants' in df.columns:
+    df = df.rename(columns={'descendants': 'num_comments'})
+else:
+    df['num_comments'] = 0 # Default to 0 if no 'descendants' field
+
+# Ensure 'category' column exists (Hacker News API does not provide a direct 'category')
+if 'category' not in df.columns:
+    df['category'] = 'uncategorized' # Placeholder for category
+
+# Drop rows where critical fields are missing
+df = df.dropna(subset=['post_id', 'title', 'score'])
+print(f"After removing nulls: {len(df)}")
+
+# Ensure 'num_comments' is numeric, coercing errors, then fill NaNs with 0 before converting to int
+df['num_comments'] = pd.to_numeric(df['num_comments'], errors='coerce')
+df['num_comments'] = df['num_comments'].fillna(0)
+
+# Ensure data types are integers
+df['score'] = df['score'].astype(int)
+df['num_comments'] = df['num_comments'].astype(int)
+
+# Remove low-quality stories (score < 5)
+df = df[df['score'] >= 5]
+print(f"After removing low scores: {len(df)}")
+
+# Strip extra whitespace from 'title'
+if 'title' in df.columns: # Ensure 'title' column exists before stripping
+    df['title'] = df['title'].str.strip()
+
+# 3. Save as CSV
+# Ensure the 'data' directory exists
+output_dir = 'data'
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+output_path = os.path.join(output_dir, 'trends_clean.csv')
+df.to_csv(output_path, index=False)
+
+print(f"\nSaved {len(df)} rows to {output_path}")
+
+# Summary: Stories per category
+print("\nStories per category:")
+print(df['category'].value_counts())
